@@ -1,6 +1,6 @@
 import sqlite3
 
-class secToolDb():
+class SecToolDb():
     def __init__(self) -> None:
         query = """
                 CREATE TABLE IF NOT EXISTS targets(
