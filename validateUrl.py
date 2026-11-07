@@ -24,12 +24,6 @@ class ValidateUrl():
             return (0 < self.parsedUrl.port <= 65535)
         else:
             return True
-        
-
-    #resolve the ipv4 addr of the url
-    def dnsResolution(self) -> str | None:
-        ipAddr = socket.gethostbyname(self.parsedUrl.hostname) if self.parsedUrl.hostname else None
-        return ipAddr
 
 
     def checkConn(self) -> bool:  
@@ -53,7 +47,6 @@ class ValidateUrl():
                     path = "/"
                 conn.request("HEAD", path) #HEAD so it js gets the headers instead of the whole content
                 response = conn.getresponse()
-                self.statusCode = response.status
             
             if (response):
                 return True
@@ -67,14 +60,20 @@ class ValidateUrl():
             if (conn is not None):
                 conn.close()
 
+    #run all the validation functions above, and return the name of whichever fails first 
+    #(or all the functions it passed)
     def validate(self) -> tuple[bool, str]:
         validations = [self.validateStructure, self.checkScheme, self.checkPort, self.checkConn]
         for validation in validations:
             if (not validation()):
                 return (False, validation.__name__)
         
-        func = None
         functions = ", ".join([func.__name__ for func in validations])
         return (True, "passed " + functions)
      
             
+
+    #resolve the ipv4 addr of the url
+    def dnsResolution(self) -> str | None:
+        ipAddr = socket.gethostbyname(self.parsedUrl.hostname) if self.parsedUrl.hostname else None
+        return ipAddr
