@@ -66,5 +66,15 @@ class ValidateUrl():
         finally:
             if (conn is not None):
                 conn.close()
-        
 
+    def validate(self) -> tuple[bool, str]:
+        validations = [self.validateStructure, self.checkScheme, self.checkPort, self.checkConn]
+        for validation in validations:
+            if (not validation()):
+                return (False, validation.__name__)
+        
+        func = None
+        functions = ", ".join([func.__name__ for func in validations])
+        return (True, "passed " + functions)
+     
+            
