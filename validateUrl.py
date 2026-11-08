@@ -2,6 +2,10 @@ import urllib.parse
 import validators
 import socket
 import http.client 
+import time
+from securityToolkitDb import SecToolDb
+
+
 
 class ValidateUrl():
     def __init__(self, url) -> None:
@@ -60,10 +64,18 @@ class ValidateUrl():
             if (conn is not None):
                 conn.close()
 
+    def checkScope(self) -> bool:
+        secToolDb = SecToolDb("registeredTargets")
+        targets = secToolDb.readAll()
+        for target in targets:
+            if (target[1] == self.url):
+                return True
+        return False
+
     #run all the validation functions above, and return the name of whichever fails first 
     #(or all the functions it passed)
     def validate(self) -> tuple[bool, str]:
-        validations = [self.validateStructure, self.checkScheme, self.checkPort, self.checkConn]
+        validations = [self.checkScope, self.validateStructure, self.checkScheme, self.checkPort, self.checkConn]
         for validation in validations:
             if (not validation()):
                 return (False, validation.__name__)

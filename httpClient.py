@@ -9,29 +9,56 @@ class HttpClient:
         self.timeout = timeout
 
 
-    def getMsg(self) -> requests.Response | str:
+    def getMsg(self, url) -> requests.Response | str:
         try:
-            response = requests.get(self.url, timeout=self.timeout)
+            response = requests.get(url, timeout=self.timeout)
 
             return response
 
         except requests.exceptions.RequestException as err:
             return str(err)
 
-    def findPages(self) -> set | None:
+    def findPagesFromPage(self, url) -> set:
         paths = set()
-        getHtml = self.getMsg()
-        if (not isinstance(getHtml, str)):
-            contentType = getHtml.headers.get("Content-Type")
+        getResponse = self.getMsg(url)
+        if (not isinstance(getResponse, str)):
+            contentType = getResponse.headers.get("Content-Type")
             if(contentType and "text/html" in contentType.lower()):
-                soup = BeautifulSoup(getHtml.text, "html.parser")
+                soup = BeautifulSoup(getResponse.text, "html.parser")
                 for path in soup.find_all("a"):
-                    link = path.get("href")
-                    if (isinstance(link, str) and ValidateUrl(link).checkScheme()):             
-                        paths.add(link)
+                    relLink = path.get("href")
+                    if (isinstance(relLink, str)):
+                        link = urllib.parse.urljoin(self.url, relLink)
+                        if (ValidateUrl(link).checkScheme()):             
+                            paths.update(link)
 
             return paths
-        
+            
         else:
-            return None
+            return set()
+
+    def findAllPages(self, maxPages) -> set:
+        allPages = set()
+        visited = set()
+        toVisit = {self.url}
+
+        x = 0
+        while(toVisit and x < maxPages):
+            toVisit = toVisit.difference(visited)
+
+            allPages.update(toVisit)
+
+            pageChecked = next(iter(toVisit))
+
+            pages = self.findPagesFromPage(pageChecked)
+            visited.update(toVisit)
+            toVisit.remove(pageChecked)
+
+            allPages.update(pages)
+            toVisit.update(pages)
+
+            x+=1 
+
+        return allPages
+
 
