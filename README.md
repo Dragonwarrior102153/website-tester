@@ -17,8 +17,7 @@ actions to those URLs.
 If you are using the packaged `WebsiteTester.exe`, you do not need to install
 Python or the project libraries separately.
 
-1. Open the folder containing `WebsiteTester.exe` (the project build places it
-   in `dist`).
+1. Open the folder containing `WebsiteTester.exe`
 2. Double-click `WebsiteTester.exe`, or open a terminal in that folder and run:
 
    ```powershell
@@ -72,3 +71,9 @@ Only test websites you own or have explicit permission to assess.
 ## Motivation
 
 I made this because I am interested in learning more about cybersecurity in the future, and I think this will be a good foundation for me.
+
+<img width="309" height="93" alt="Screenshot 2026-11-08 190353" src="https://github.com/user-attachments/assets/fa6eddd4-641b-4adf-b739-9b26872ab5be" />
+<img width="599" height="355" alt="Screenshot 2026-11-08 190302" src="https://github.com/user-attachments/assets/a013b8cc-a026-4041-bcdd-849f819eaef5" />
+<img width="894" height="448" alt="Screenshot 2026-11-08 190136" src="https://github.com/user-attachments/assets/df8372ef-4363-4841-8d8f-0d4a0620c5c5" />
+<img width="459" height="436" alt="Screenshot 2026-11-08 190113" src="https://github.com/user-attachments/assets/009fc731-4172-4ec7-90c6-31e974755c2b" />
+
