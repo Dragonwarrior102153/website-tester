@@ -5,8 +5,7 @@ class SecToolDb():
         self.table = table
         query = f"""
                 CREATE TABLE IF NOT EXISTS {self.table}(
-                ID INT PRIMARY KEY,
-                Name TEXT NOT NULL,
+                ID INTEGER PRIMARY KEY AUTOINCREMENT,
                 URL TEXT NOT NULL,
                 Time TEXT
                 )
@@ -18,9 +17,9 @@ class SecToolDb():
 
         self.allowedColumns = []
 
-    def create(self, name, url, time) -> None:
-        query = f"INSERT INTO {self.table} VALUES (?,?,?)"
-        self.cursor.execute(query, (name, url, time))
+    def create(self, url, time) -> None:
+        query = f"INSERT INTO {self.table} (URL, Time) VALUES (?,?)"
+        self.cursor.execute(query, (url, time))
         self.conn.commit()
 
     def read(self, id) -> list:
@@ -33,9 +32,9 @@ class SecToolDb():
         self.cursor.execute(query)
         return self.cursor.fetchall()
 
-    def updateRow(self, id, name, url, time) -> None:
-        query = f"UPDATE {self.table} SET Name = ?, URL = ?, Time = ? WHERE (ID = ?)"
-        self.cursor.execute(query, (name, url, time, id))
+    def updateRow(self, id, url, time) -> None:
+        query = f"UPDATE {self.table} SET  URL = ?, Time = ? WHERE (ID = ?)"
+        self.cursor.execute(query, (url, time, id))
 
     def update(self, id, column, value) -> None:
         if (column in self.allowedColumns):

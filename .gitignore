@@ -1,2 +1,7 @@
 venv/
 connPlan.md
+sec
+SecurityToolkitDb
+__pycache__/
+dist/
+build/
