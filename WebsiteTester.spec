@@ -1,9 +1,11 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+from pathlib import Path
+
 
 a = Analysis(
     ['cli/main.py'],
-    pathex=[],
+    pathex=[str(Path(SPECPATH).resolve())],
     binaries=[],
     datas=[],
     hiddenimports=[],
