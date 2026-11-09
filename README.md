@@ -69,8 +69,7 @@ The local scope database is created in the current working directory as
 Only test websites you own or have explicit permission to assess.
 
 ## Motivation
-
-I made this because I am interested in learning more about cybersecurity in the future, and I think this will be a good foundation for me.
+I made this as a small Python tool to learn website validation and crawling. It checks URLs, fetches web pages, parses links, and explores a site in a limited way, with a local scope list to keep testing focused on approved websites. Additionally, I am interested in learning more about cybersecurity in the future, and I think this project is a useful way to explore relevant concepts while building a useful tool.
 
 <img width="309" height="93" alt="Screenshot 2026-11-08 190353" src="https://github.com/user-attachments/assets/fa6eddd4-641b-4adf-b739-9b26872ab5be" />
 <img width="599" height="355" alt="Screenshot 2026-11-08 190302" src="https://github.com/user-attachments/assets/a013b8cc-a026-4041-bcdd-849f819eaef5" />
