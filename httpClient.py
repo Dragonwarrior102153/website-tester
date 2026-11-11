@@ -22,7 +22,9 @@ class HttpClient:
         
         return int(amount * factors[unit])
 
+    #caller must close the response
     def getMsg(self, url) -> tuple[requests.Response, bytes] | str:
+        response = None
         try:
             response = requests.get(url, timeout=self.timeout, stream=True)
             content = bytearray()
@@ -34,24 +36,29 @@ class HttpClient:
                     raise ValueError("Response exceeds maximum size")
 
             return response, bytes(content)
+        
 
         except requests.exceptions.RequestException as err:
             return str(err)
+
 
     def findPagesFromPage(self, url) -> set:
         paths = set()
         getResponse = self.getMsg(url)
         if (not isinstance(getResponse, str)):
             response, content = getResponse
-            contentType = response.headers.get("Content-Type")
-            if(contentType and "text/html" in contentType.lower()):
-                soup = BeautifulSoup(content, "html.parser")
-                for path in soup.find_all("a"):
-                    relLink = path.get("href")
-                    if (isinstance(relLink, str)):
-                        link = urllib.parse.urljoin(self.url, relLink)
-                        if (ValidateUrl(link).validate()):             
-                            paths.add(link)
+            try:
+                contentType = response.headers.get("Content-Type")
+                if(contentType and "text/html" in contentType.lower()):
+                    soup = BeautifulSoup(content, "html.parser")
+                    for path in soup.find_all("a"):
+                        relLink = path.get("href")
+                        if (isinstance(relLink, str)):
+                            link = urllib.parse.urljoin(response.url, relLink)
+                            if (ValidateUrl(link).validate()):             
+                                paths.add(link)
+            finally:
+                response.close()
 
             return paths
             
@@ -81,7 +88,38 @@ class HttpClient:
 
             allPages.update(pages)
             toVisit.update(pages)
-
+    
             x+=1 
 
         return allPages
+
+    #find forms the user fills in
+    def findForms(self, url) -> tuple[list[dict], list[list[dict]]] | None:
+        forms = []
+        inputs = []
+        getMsg = self.getMsg(url)
+        if (not isinstance(getMsg, str)):
+            response, content = getMsg
+            try:
+                soup = BeautifulSoup(content, "html.parser")
+                for form in soup.find_all("form"):
+                    forms.append(form.attrs)
+                    inputs.append([inputTag.attrs for inputTag in form.find_all(["input", "textarea", "select", "button"])])
+
+            finally:
+                response.close()
+
+            return (forms, inputs)
+        
+        else:
+            return None
+
+    def checkSecHeaders(self, url):
+        passsecurityHeaders = {
+            "Content-Security-Policy": False,
+            "Strict-Transport-Security": False,
+            "X-Content-Type-Options": False,
+            "Referrer-Policy": False,
+        "Permissions-Policy": False
+        }
+
