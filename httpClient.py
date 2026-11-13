@@ -3,6 +3,7 @@ import re
 from bs4 import BeautifulSoup
 import urllib.parse
 from validateUrl import ValidateUrl
+from headerCheckEnum import HeaderVals
 
 class HttpClient:
     def __init__(self, url, timeout, maxSize: str = "2 MB") -> None:
@@ -114,12 +115,46 @@ class HttpClient:
         else:
             return None
 
-    def checkSecHeaders(self, url):
-        passsecurityHeaders = {
-            "Content-Security-Policy": False,
-            "Strict-Transport-Security": False,
-            "X-Content-Type-Options": False,
-            "Referrer-Policy": False,
-        "Permissions-Policy": False
-        }
 
+    def checkSecHeaders(self, url) -> list[dict[str, str | HeaderVals | None]]:
+        securityHeaders = ["Content-Security-Policy", "Strict-Transport-Security",
+                          "X-Content-Type-Options", "Referrer-Policy", "Permissions-Policy"]
+        passsecurityHeaders: list[dict[str, str | HeaderVals | None]] = [{"header": None, "status": None, "value": None} for x in range(len(securityHeaders))]
+        getMsg = self.getMsg(url)
+        if (not isinstance(getMsg, str)):
+            response, content = getMsg
+            for index, secHeader in enumerate(securityHeaders):
+                value = response.headers.get(secHeader)
+                passsecurityHeaders[index]["header"] = secHeader
+                match secHeader:
+                    case ("X-Content-Type-Options"):
+                        if (value is not None):
+                            if (value.strip().lower() == "nosniff"):
+                                passsecurityHeaders[index]["status"] = HeaderVals.PASS
+                                passsecurityHeaders[index]["value"] = value
+
+                            else:
+                                passsecurityHeaders[index]["status"] = HeaderVals.MISCONFIGURED
+                                passsecurityHeaders[index]["value"] = value
+
+                        else:
+                            passsecurityHeaders[index]["status"] = HeaderVals.MISSING
+                            passsecurityHeaders[index]["value"] = None
+
+                    case ("Strict-Transport-Security"):
+                        if (urllib.parse.urlparse(url).scheme.lower() == "http"):
+                            passsecurityHeaders[index]["status"] = HeaderVals.INAPPLICABLE
+                            passsecurityHeaders[index]["value"] = None
+
+                        elif (not value):                            
+                            passsecurityHeaders[index]["status"] = HeaderVals.MISSING
+                            passsecurityHeaders[index]["value"] = value
+
+                        else:
+                            directives = [directive.strip() for directive in value.split(";")]
+
+                            for directive in directives:
+                                if (directive.startswith("max-age=")):
+                                    dir, value = directive.split("max-age=")
+                                    passsecurityHeaders[index]["status"] = HeaderVals.PASS
+                                    passsecurityHeaders[index]["value"] = value
