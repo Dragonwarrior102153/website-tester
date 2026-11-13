@@ -95,6 +95,7 @@ class HttpClient:
         return allPages
 
     #find forms the user fills in
+    #also holy grail of if else statements 😭
     def findForms(self, url) -> tuple[list[dict], list[list[dict]]] | None:
         forms = []
         inputs = []
@@ -146,15 +147,31 @@ class HttpClient:
                             passsecurityHeaders[index]["status"] = HeaderVals.INAPPLICABLE
                             passsecurityHeaders[index]["value"] = None
 
-                        elif (not value):                            
+                        elif (value is None):                            
                             passsecurityHeaders[index]["status"] = HeaderVals.MISSING
                             passsecurityHeaders[index]["value"] = value
 
                         else:
                             directives = [directive.strip() for directive in value.split(";")]
-
+                            foundMaxAge = False
                             for directive in directives:
                                 if (directive.startswith("max-age=")):
-                                    dir, value = directive.split("max-age=")
-                                    passsecurityHeaders[index]["status"] = HeaderVals.PASS
-                                    passsecurityHeaders[index]["value"] = value
+                                    maxAge = directive.split("max-age=")[1]
+
+                                    if (not maxAge or not str.isdigit(maxAge) or int(maxAge) <= 0):
+                                        passsecurityHeaders[index]["status"] = HeaderVals.MISCONFIGURED
+                                        passsecurityHeaders[index]["value"] = maxAge 
+
+                                    elif (foundMaxAge is False):                                      
+                                        passsecurityHeaders[index]["status"] = HeaderVals.PASS
+                                        passsecurityHeaders[index]["value"] = maxAge
+
+                                    else:
+                                        passsecurityHeaders[index]["status"] = HeaderVals.MISCONFIGURED
+                                        passsecurityHeaders[index]["value"] = "duplicates found"
+
+                                    foundMaxAge = True
+
+                            if (not foundMaxAge):
+                                passsecurityHeaders[index]["status"] = HeaderVals.MISSING
+                                passsecurityHeaders[index]["value"] = None
