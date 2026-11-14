@@ -3,5 +3,6 @@ from enum import Enum
 class HeaderVals(Enum):
     MISSING = 1
     PASS = 2
-    MISCONFIGURED = 3
-    INAPPLICABLE = 4
+    WEAK = 3
+    MISCONFIGURED = 4
+    INAPPLICABLE = 5

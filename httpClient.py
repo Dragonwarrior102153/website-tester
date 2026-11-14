@@ -95,7 +95,6 @@ class HttpClient:
         return allPages
 
     #find forms the user fills in
-    #also holy grail of if else statements 😭
     def findForms(self, url) -> tuple[list[dict], list[list[dict]]] | None:
         forms = []
         inputs = []
@@ -116,10 +115,10 @@ class HttpClient:
         else:
             return None
 
-
+    #holy grail of if else statements and indents😭
     def checkSecHeaders(self, url) -> list[dict[str, str | HeaderVals | None]]:
         securityHeaders = ["Content-Security-Policy", "Strict-Transport-Security",
-                          "X-Content-Type-Options", "Referrer-Policy", "Permissions-Policy"]
+                            "X-Content-Type-Options", "Referrer-Policy", "Permissions-Policy"]
         passsecurityHeaders: list[dict[str, str | HeaderVals | None]] = [{"header": None, "status": None, "value": None} for x in range(len(securityHeaders))]
         getMsg = self.getMsg(url)
         if (not isinstance(getMsg, str)):
@@ -162,9 +161,13 @@ class HttpClient:
                                         passsecurityHeaders[index]["status"] = HeaderVals.MISCONFIGURED
                                         passsecurityHeaders[index]["value"] = maxAge 
 
-                                    elif (foundMaxAge is False):                                      
-                                        passsecurityHeaders[index]["status"] = HeaderVals.PASS
-                                        passsecurityHeaders[index]["value"] = maxAge
+                                    elif (foundMaxAge is False):
+                                        if (int(maxAge) >= 31536000):                                      
+                                            passsecurityHeaders[index]["status"] = HeaderVals.PASS
+                                            passsecurityHeaders[index]["value"] = maxAge
+                                        else:                                      
+                                            passsecurityHeaders[index]["status"] = HeaderVals.WEAK
+                                            passsecurityHeaders[index]["value"] = maxAge                                     
 
                                     else:
                                         passsecurityHeaders[index]["status"] = HeaderVals.MISCONFIGURED
@@ -175,3 +178,77 @@ class HttpClient:
                             if (not foundMaxAge):
                                 passsecurityHeaders[index]["status"] = HeaderVals.MISSING
                                 passsecurityHeaders[index]["value"] = None
+
+                    case ("Referrer-Policy"):
+                        passing = ["no-referrer", "same-origin", "strict-origin", "strict-origin-when-cross-origin"] 
+                        weak = ["no-referrer-when-downgrade", "origin", "origin-when-cross-origin"]
+                        value = value.split(",") if value else None
+                        value = value[- 1] if value else None
+                        if (value is not None):
+                            if (value.strip().lower() in passing):
+                                passsecurityHeaders[index]["status"] = HeaderVals.PASS
+                                passsecurityHeaders[index]["value"] = value
+
+                            elif (value.strip().lower() in weak):
+                                passsecurityHeaders[index]["status"] = HeaderVals.WEAK
+                                passsecurityHeaders[index]["value"] = value
+
+                            else:
+                                passsecurityHeaders[index]["status"] = HeaderVals.MISCONFIGURED
+                                passsecurityHeaders[index]["value"] = value
+
+                        else:
+                            passsecurityHeaders[index]["status"] = HeaderVals.MISSING
+                            passsecurityHeaders[index]["value"] = None
+
+                    case ("Permissions-Policy"):
+                        allowedForms = {"", "*", "self", "src"}
+                        #only checks some common features for now
+                        validFeatures = {"camera","microphone","geolocation","fullscreen","payment","usb","screen-wake-lock"}
+
+                        if (value is not None):
+                            if (value):
+                                directives = [directive.strip() for directive in value.split(",")]
+                                valid = True
+                                for directive in directives:
+                                    try:
+                                        name, val = directive.split("=", 1)
+                                        val = val.strip()
+                                    except ValueError:
+                                        valid = False
+                                        break
+                                    if (not val.startswith("(") or not val.endswith(")")):
+                                        valid = False
+                                        break
+                                    allowList = val[1:-1].split()
+                                    policies = [valOptions.strip() for valOptions in allowList]
+                                    if (not name in validFeatures):
+                                        valid = False
+                                        break
+                                    for policy in policies:
+                                        policy = str(policy)
+                                        if ("*" in policies and len(policies) > 1):
+                                            valid = False
+                                            break
+                                        if (policy in allowedForms or (policy.startswith('"') and policy.endswith('"') and ValidateUrl(policy.strip('"')).validate()[0])):
+                                            continue
+                                        else:
+                                            valid = False
+                                            break
+                                if (valid):
+                                    passsecurityHeaders[index]["status"] = HeaderVals.PASS
+                                    passsecurityHeaders[index]["value"] = value
+                                else:
+                                    passsecurityHeaders[index]["status"] = HeaderVals.MISCONFIGURED
+                                    passsecurityHeaders[index]["value"] = value
+
+                            else:
+                                passsecurityHeaders[index]["status"] = HeaderVals.MISCONFIGURED
+                                passsecurityHeaders[index]["value"] = value
+
+                        else:
+                            passsecurityHeaders[index]["status"] = HeaderVals.MISSING
+                            passsecurityHeaders[index]["value"] = None
+
+                    case (""):
+                    
