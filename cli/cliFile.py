@@ -11,8 +11,14 @@ class CLI:
         self.act = ""
         self.gameLoop = True
         while(self.gameLoop):
-            self.defaultPrompt()
-            if (self.act.lower() == "validate"):
+            if hasattr(self, "url"):
+                self.actionPrompt()
+            else:
+                self.defaultPrompt()
+
+            if (self.act.lower() == "url" or self.act.lower() == "info"):
+                self.urlGet()
+            elif (self.act.lower() == "validate"):
                 self.validate()
             elif (self.act.lower() == "scope"):
                 self.changeScope()
@@ -28,23 +34,43 @@ class CLI:
                 self.bodyMsg()
             elif (self.act.lower() == "status"):
                 self.statusMsg()
+            elif (self.act.lower() == "forms"):
+                self.findForms()
+            elif (self.act.lower() == "form security"):
+                self.analyzeFormSec()
+            elif (self.act.lower() == "analyze headers"):
+                self.analyzeHeaders()
+            elif (self.act.lower() == "cookies"):
+                self.findCookies()
             elif (self.act.lower() == "exit"):
                 self.exit()
 
 
     def defaultPrompt(self):
-        print("Actions\n\nValidate: validate the structure of the url")
-        print("Body: display the body html tags of the url \nStatus: dipslay the status code of the connection")
-        print("Paths: find all the pages from the url (recursively)\nPath: find the links from the page")
-        print("Show: show links in scope\nScope: add a link to scope")
-        print("DNS: resolve the ip address (ipv4) of the url\nExit: exit the application")
+        print("\nShow: show links in scope\nScope: add a link to scope")
+        print("URL: Enter the url to be scanned\nExit: exit the application")
         print("\nFormat of the url should be https://yoursite.com (or just paste the url from a browser)")
         self.act = input("\ntype in the associated text: \n")
 
+    def urlGet(self):
+        self.url = input("\nenter the url: \n")
+        self.size = input("enter max size of the file (format: 5 B, or 12 MB)\n")
+
+    def actionPrompt(self):
+        print("\nActions\n\nValidate: validate the structure of the url")
+        print("Body: display the body html tags of the url \nStatus: dipslay the status code of the connection")
+        print("Paths: find all the pages from the url (recursively)\nPath: find the links from the page")
+        print("DNS: resolve the ip address (ipv4) of the url")
+        print("\nFormat of the url should be https://yoursite.com (or just paste the url from a browser)")
+        print("Analyze headers: check the url's headers for some important ones\nCookies: find cookies int the url")
+        print("Forms: find all the forms and input fields in the form in the url")
+        print("Form security: check if the forms have some basic secure configurations")
+        print("Scope: add a link to scope\nShow: show links in scope")
+        print("URL/Info: enter or change the site info\nExit: exit the application")
+        self.act = input("\ntype in the associated text: \n")
+
     def bodyMsg(self):
-        url = input("enter the url: \n")
-        size = input("enter max size of the file (format: 5 B, or 12 MB)\n")
-        result = HttpClient(url, 10, size).getMsg(url)
+        result = HttpClient(self.url, 10, self.size).getMsg(self.url)
         if isinstance(result, str):
             print(result)
         else:
@@ -52,9 +78,7 @@ class CLI:
             print(content.decode(response.encoding or "utf-8", errors="replace"))
 
     def statusMsg(self):
-        url = input("enter the url: \n")
-        size = input("enter max size of the file (format: 5 B, or 12 MB)\n")
-        result = HttpClient(url, 10, size).getMsg(url)
+        result = HttpClient(self.url, 10, self.size).getMsg(self.url)
         if isinstance(result, str):
             print(result)
         else:
@@ -69,23 +93,29 @@ class CLI:
         print(SecToolDb("registeredTargets").readAll())
 
     def validate(self):
-        url = input("enter the url: \n")
-        print(ValidateUrl(url).validate())
+        print(ValidateUrl(self.url).validate())
 
     def getPaths(self):
-        url = input("enter the url: \n")
         max = int(input("up to how many pages can the client initiate a connection with? \n"))
-        size = input("enter max size of the file (format: 5 B, or 12 MB)\n")
-        print(HttpClient(url, 10, size).findAllPages(max))
+        print(HttpClient(self.url, 10, self.size).findAllPages(max))
 
     def getPath(self):
-        url = input("enter the url: \n")
-        size = input("enter max size of the file (format: 5 B, or 12 MB)\n")
-        print(HttpClient(url, 10, size).findPagesFromPage(url))
+        print(HttpClient(self.url, 10, self.size).findPagesFromPage(self.url))
 
     def dnsResolution(self):
-        url = input("enter the url: \n")
-        print(ValidateUrl(url).dnsResolution())
+        print(ValidateUrl(self.url).dnsResolution())
+
+    def findForms(self):
+        print(HttpClient(self.url, 10, self.size).findForms(self.url))
+
+    def analyzeFormSec(self):
+        print(HttpClient(self.url, 10, self.size).checkFormSecurity(self.url))
+
+    def findCookies(self):
+        print(HttpClient(self.url, 10, self.size).checkCookies(self.url))
+
+    def analyzeHeaders(self):
+        print(HttpClient(self.url, 10, self.size).checkSecHeaders(self.url))
 
     def exit(self):
         self.gameLoop = False

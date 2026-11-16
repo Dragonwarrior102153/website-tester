@@ -82,7 +82,6 @@ class ValidateUrl():
         
         functions = ", ".join([func.__name__ for func in validations])
         return (True, "passed " + functions)
-     
             
 
     #resolve the ipv4 addr of the url

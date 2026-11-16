@@ -4,6 +4,7 @@ from bs4 import BeautifulSoup
 import urllib.parse
 from validateUrl import ValidateUrl
 from headerCheckEnum import HeaderVals
+from cookie import Cookie
 
 class HttpClient:
     def __init__(self, url, timeout, maxSize: str = "2 MB") -> None:
@@ -41,6 +42,7 @@ class HttpClient:
 
         except requests.exceptions.RequestException as err:
             return str(err)
+
 
 
     def findPagesFromPage(self, url) -> set:
@@ -116,139 +118,217 @@ class HttpClient:
             return None
 
     #holy grail of if else statements and indents😭
-    def checkSecHeaders(self, url) -> list[dict[str, str | HeaderVals | None]]:
+    def checkSecHeaders(self, url) -> list[dict[str, str | HeaderVals | None]] | str:
         securityHeaders = ["Content-Security-Policy", "Strict-Transport-Security",
                             "X-Content-Type-Options", "Referrer-Policy", "Permissions-Policy"]
         passsecurityHeaders: list[dict[str, str | HeaderVals | None]] = [{"header": None, "status": None, "value": None} for x in range(len(securityHeaders))]
         getMsg = self.getMsg(url)
         if (not isinstance(getMsg, str)):
-            response, content = getMsg
-            for index, secHeader in enumerate(securityHeaders):
-                value = response.headers.get(secHeader)
-                passsecurityHeaders[index]["header"] = secHeader
-                match secHeader:
-                    case ("X-Content-Type-Options"):
-                        if (value is not None):
-                            if (value.strip().lower() == "nosniff"):
-                                passsecurityHeaders[index]["status"] = HeaderVals.PASS
-                                passsecurityHeaders[index]["value"] = value
-
-                            else:
-                                passsecurityHeaders[index]["status"] = HeaderVals.MISCONFIGURED
-                                passsecurityHeaders[index]["value"] = value
-
-                        else:
-                            passsecurityHeaders[index]["status"] = HeaderVals.MISSING
-                            passsecurityHeaders[index]["value"] = None
-
-                    case ("Strict-Transport-Security"):
-                        if (urllib.parse.urlparse(url).scheme.lower() == "http"):
-                            passsecurityHeaders[index]["status"] = HeaderVals.INAPPLICABLE
-                            passsecurityHeaders[index]["value"] = None
-
-                        elif (value is None):                            
-                            passsecurityHeaders[index]["status"] = HeaderVals.MISSING
-                            passsecurityHeaders[index]["value"] = value
-
-                        else:
-                            directives = [directive.strip() for directive in value.split(";")]
-                            foundMaxAge = False
-                            for directive in directives:
-                                if (directive.startswith("max-age=")):
-                                    maxAge = directive.split("max-age=")[1]
-
-                                    if (not maxAge or not str.isdigit(maxAge) or int(maxAge) <= 0):
-                                        passsecurityHeaders[index]["status"] = HeaderVals.MISCONFIGURED
-                                        passsecurityHeaders[index]["value"] = maxAge 
-
-                                    elif (foundMaxAge is False):
-                                        if (int(maxAge) >= 31536000):                                      
-                                            passsecurityHeaders[index]["status"] = HeaderVals.PASS
-                                            passsecurityHeaders[index]["value"] = maxAge
-                                        else:                                      
-                                            passsecurityHeaders[index]["status"] = HeaderVals.WEAK
-                                            passsecurityHeaders[index]["value"] = maxAge                                     
-
-                                    else:
-                                        passsecurityHeaders[index]["status"] = HeaderVals.MISCONFIGURED
-                                        passsecurityHeaders[index]["value"] = "duplicates found"
-
-                                    foundMaxAge = True
-
-                            if (not foundMaxAge):
-                                passsecurityHeaders[index]["status"] = HeaderVals.MISSING
-                                passsecurityHeaders[index]["value"] = None
-
-                    case ("Referrer-Policy"):
-                        passing = ["no-referrer", "same-origin", "strict-origin", "strict-origin-when-cross-origin"] 
-                        weak = ["no-referrer-when-downgrade", "origin", "origin-when-cross-origin"]
-                        value = value.split(",") if value else None
-                        value = value[- 1] if value else None
-                        if (value is not None):
-                            if (value.strip().lower() in passing):
-                                passsecurityHeaders[index]["status"] = HeaderVals.PASS
-                                passsecurityHeaders[index]["value"] = value
-
-                            elif (value.strip().lower() in weak):
-                                passsecurityHeaders[index]["status"] = HeaderVals.WEAK
-                                passsecurityHeaders[index]["value"] = value
-
-                            else:
-                                passsecurityHeaders[index]["status"] = HeaderVals.MISCONFIGURED
-                                passsecurityHeaders[index]["value"] = value
-
-                        else:
-                            passsecurityHeaders[index]["status"] = HeaderVals.MISSING
-                            passsecurityHeaders[index]["value"] = None
-
-                    case ("Permissions-Policy"):
-                        allowedForms = {"", "*", "self", "src"}
-                        #only checks some common features for now
-                        validFeatures = {"camera","microphone","geolocation","fullscreen","payment","usb","screen-wake-lock"}
-
-                        if (value is not None):
-                            if (value):
-                                directives = [directive.strip() for directive in value.split(",")]
-                                valid = True
-                                for directive in directives:
-                                    try:
-                                        name, val = directive.split("=", 1)
-                                        val = val.strip()
-                                    except ValueError:
-                                        valid = False
-                                        break
-                                    if (not val.startswith("(") or not val.endswith(")")):
-                                        valid = False
-                                        break
-                                    allowList = val[1:-1].split()
-                                    policies = [valOptions.strip() for valOptions in allowList]
-                                    if (not name in validFeatures):
-                                        valid = False
-                                        break
-                                    for policy in policies:
-                                        policy = str(policy)
-                                        if ("*" in policies and len(policies) > 1):
-                                            valid = False
-                                            break
-                                        if (policy in allowedForms or (policy.startswith('"') and policy.endswith('"') and ValidateUrl(policy.strip('"')).validate()[0])):
-                                            continue
-                                        else:
-                                            valid = False
-                                            break
-                                if (valid):
+            response = None
+            try:
+                response, content = getMsg
+                for index, secHeader in enumerate(securityHeaders):
+                    value = response.headers.get(secHeader)
+                    passsecurityHeaders[index]["header"] = secHeader
+                    match secHeader:
+                        case ("X-Content-Type-Options"):
+                            if (value is not None):
+                                if (value.strip().lower() == "nosniff"):
                                     passsecurityHeaders[index]["status"] = HeaderVals.PASS
                                     passsecurityHeaders[index]["value"] = value
+
                                 else:
                                     passsecurityHeaders[index]["status"] = HeaderVals.MISCONFIGURED
                                     passsecurityHeaders[index]["value"] = value
 
                             else:
-                                passsecurityHeaders[index]["status"] = HeaderVals.MISCONFIGURED
+                                passsecurityHeaders[index]["status"] = HeaderVals.MISSING
+                                passsecurityHeaders[index]["value"] = None
+
+                        case ("Strict-Transport-Security"):
+                            if (urllib.parse.urlparse(url).scheme.lower() == "http"):
+                                passsecurityHeaders[index]["status"] = HeaderVals.INAPPLICABLE
+                                passsecurityHeaders[index]["value"] = None
+
+                            elif (value is None):                            
+                                passsecurityHeaders[index]["status"] = HeaderVals.MISSING
                                 passsecurityHeaders[index]["value"] = value
 
-                        else:
-                            passsecurityHeaders[index]["status"] = HeaderVals.MISSING
-                            passsecurityHeaders[index]["value"] = None
+                            else:
+                                directives = [directive.strip() for directive in value.split(";")]
+                                foundMaxAge = False
+                                for directive in directives:
+                                    if (directive.startswith("max-age=")):
+                                        maxAge = directive.split("max-age=")[1]
 
-                    case (""):
-                    
+                                        if (not maxAge or not str.isdigit(maxAge) or int(maxAge) <= 0):
+                                            passsecurityHeaders[index]["status"] = HeaderVals.MISCONFIGURED
+                                            passsecurityHeaders[index]["value"] = maxAge 
+
+                                        elif (foundMaxAge is False):
+                                            if (int(maxAge) >= 31536000):                                      
+                                                passsecurityHeaders[index]["status"] = HeaderVals.PASS
+                                                passsecurityHeaders[index]["value"] = maxAge
+                                            else:                                      
+                                                passsecurityHeaders[index]["status"] = HeaderVals.WEAK
+                                                passsecurityHeaders[index]["value"] = maxAge                                     
+
+                                        else:
+                                            passsecurityHeaders[index]["status"] = HeaderVals.MISCONFIGURED
+                                            passsecurityHeaders[index]["value"] = "duplicates found"
+
+                                        foundMaxAge = True
+
+                                if (not foundMaxAge):
+                                    passsecurityHeaders[index]["status"] = HeaderVals.MISSING
+                                    passsecurityHeaders[index]["value"] = None
+
+                        case ("Referrer-Policy"):
+                            passing = ["no-referrer", "same-origin", "strict-origin", "strict-origin-when-cross-origin"] 
+                            weak = ["no-referrer-when-downgrade", "origin", "origin-when-cross-origin"]
+                            value = value.split(",") if value else None
+                            value = value[- 1] if value else None
+                            if (value is not None):
+                                if (value.strip().lower() in passing):
+                                    passsecurityHeaders[index]["status"] = HeaderVals.PASS
+                                    passsecurityHeaders[index]["value"] = value
+
+                                elif (value.strip().lower() in weak):
+                                    passsecurityHeaders[index]["status"] = HeaderVals.WEAK
+                                    passsecurityHeaders[index]["value"] = value
+
+                                else:
+                                    passsecurityHeaders[index]["status"] = HeaderVals.MISCONFIGURED
+                                    passsecurityHeaders[index]["value"] = value
+
+                            else:
+                                passsecurityHeaders[index]["status"] = HeaderVals.MISSING
+                                passsecurityHeaders[index]["value"] = None
+
+                        case ("Permissions-Policy"):
+                            allowedForms = {"", "*", "self", "src"}
+                            #only checks some common features for now
+                            validFeatures = {"camera","microphone","geolocation","fullscreen","payment","usb","screen-wake-lock"}
+
+                            if (value is not None):
+                                if (value):
+                                    directives = [directive.strip() for directive in value.split(",")]
+                                    valid = True
+                                    for directive in directives:
+                                        try:
+                                            name, val = directive.split("=", 1)
+                                            val = val.strip()
+                                        except ValueError:
+                                            valid = False
+                                            break
+                                        if (not val.startswith("(") or not val.endswith(")")):
+                                            valid = False
+                                            break
+                                        allowList = val[1:-1].split()
+                                        policies = [valOptions.strip() for valOptions in allowList]
+                                        if (not name in validFeatures):
+                                            valid = False
+                                            break
+                                        for policy in policies:
+                                            policy = str(policy)
+                                            if ("*" in policies and len(policies) > 1):
+                                                valid = False
+                                                break
+                                            if (policy in allowedForms or (policy.startswith('"') and policy.endswith('"') and ValidateUrl(policy.strip('"')).validate()[0])):
+                                                continue
+                                            else:
+                                                valid = False
+                                                break
+                                    if (valid):
+                                        passsecurityHeaders[index]["status"] = HeaderVals.PASS
+                                        passsecurityHeaders[index]["value"] = value
+                                    else:
+                                        passsecurityHeaders[index]["status"] = HeaderVals.MISCONFIGURED
+                                        passsecurityHeaders[index]["value"] = value
+
+                                else:
+                                    passsecurityHeaders[index]["status"] = HeaderVals.MISCONFIGURED
+                                    passsecurityHeaders[index]["value"] = value
+
+                            else:
+                                passsecurityHeaders[index]["status"] = HeaderVals.MISSING
+                                passsecurityHeaders[index]["value"] = None
+
+                        case ("Content-Security-Policy"):
+                            pass
+
+            finally:
+                if (response is not None):
+                    response.close()
+                return passsecurityHeaders
+
+        else:
+            return getMsg
+
+    def checkCookies(self, url) -> list[Cookie] | str:
+        getMsg = self.getMsg(url)
+        response = None
+        cookieOverview = []
+        if (not isinstance(getMsg, str)):
+            try:
+                response, content = getMsg
+                cookies = response.cookies
+
+                for cookie in cookies:
+                    cookieObj = Cookie(
+                                        cookie.name,
+                                        cookie.secure,
+                                        cookie.has_nonstandard_attr("HttpOnly"),
+                                        cookie.get_nonstandard_attr("SameSite"),
+                                        cookie.domain,
+                                        cookie.path,
+                                        cookie.expires,
+                                        cookie.get_nonstandard_attr("Max-Age"),
+                                        cookie.has_nonstandard_attr("Partitioned"),
+                                        cookie.get_nonstandard_attr("Priority")
+                                        )
+                    cookieOverview.append(cookieObj)
+
+                return cookieOverview
+            
+            finally: 
+                if (response is not None):
+                    response.close()
+
+        else:
+            return getMsg
+
+    def checkFormSecurity(self, url):
+        forms = self.findForms(url)
+        if (forms is not None):
+            forms, inputs = forms
+            formsSec = [{"Scheme": None, "Submission URL": None, "Method": None, "Password Exists": False, "External Submission": False} for x in range(len(forms))]
+            
+            for index, form in enumerate(forms):
+                action = form.get("action")
+                resolvedAction = urllib.parse.urljoin(url, action or url)
+
+                passwordFound = False
+                for inputTag in inputs[index]:
+                    if (inputTag.get("type", "").lower() == "password"):
+                            passwordFound = True
+                            break
+
+                pageParsed = urllib.parse.urlparse(url)
+                actionParsed = urllib.parse.urlparse(resolvedAction)
+                pagePort = pageParsed.port or (443 if pageParsed.scheme == "https" else 80)
+                actionPort = actionParsed.port or (443 if actionParsed.scheme == "https" else 80)
+                pageOrigin = (pageParsed.scheme, pageParsed.hostname, pagePort)
+                actionOrigin = (actionParsed.scheme, actionParsed.hostname, actionPort)
+                isExternal = pageOrigin != actionOrigin
+
+                formsSec[index]["Scheme"] = urllib.parse.urlparse(resolvedAction).scheme
+                formsSec[index]["Submission URL"] = resolvedAction
+                formsSec[index]["Method"] = form.get("method", "get").lower()
+                formsSec[index]["Password Exists"] = passwordFound
+                formsSec[index]["External Submission"] = isExternal
+
+            return formsSec
+
+        else: 
+            return None
