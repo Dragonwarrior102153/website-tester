@@ -2,15 +2,17 @@
 
 ## What it is
 
-Website Tester is a command-line tool for checking and exploring websites you own
-or have permission to test. It can validate a URL, check its connection, resolve
-its IPv4 address, fetch a page's HTML or status code, and find links on a page or
-across a limited number of pages.
+Website Tester is a command-line tool for checking and exploring websites you
+own or have permission to test. Enter a URL to check its format and connection
+or resolve its IPv4 address. You can fetch a page's HTML or status code, list
+its links, or crawl links across a limited number of pages. The tool can also
+show forms and their input fields, check basic form security, review selected
+security headers, and summarize cookies.
 
-The tool also lets you save base URLs in a local scope list. The `Validate`
-action checks that the exact URL has been added to this list first. The list is
-a reminder and a validation gate; it does not automatically restrict the other
-actions to those URLs.
+Save base URLs in the local scope list to keep track of sites you are allowed to
+test. The `Validate` action requires the exact URL to be in the list before
+checking it. Other actions are not restricted by the list, so use them only on
+sites you have permission to assess.
 
 ## Run the packaged Windows executable
 
