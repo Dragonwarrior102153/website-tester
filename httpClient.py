@@ -5,6 +5,7 @@ import urllib.parse
 from validateUrl import ValidateUrl
 from headerCheckEnum import HeaderVals
 from cookie import Cookie
+from findings import Findings
 
 class HttpClient:
     def __init__(self, url, timeout, maxSize: str = "2 MB") -> None:
@@ -42,6 +43,15 @@ class HttpClient:
 
         except requests.exceptions.RequestException as err:
             return str(err)
+
+    @staticmethod
+    def _requestError(checkName: str, url: str, error: str | None = None) -> Findings:
+        description = f"{checkName} could not be completed."
+        evidence = {"url": url}
+        if error is not None:
+            description = f"{description} {error}"
+            evidence["error"] = error
+        return Findings(checkName, "ERROR", "INFO", description, evidence)
 
 
 
@@ -118,16 +128,17 @@ class HttpClient:
             return None
 
     #holy grail of if else statements and indents😭
-    def checkSecHeaders(self, url) -> list[dict[str, str | HeaderVals | None]] | str:
-        securityHeaders = ["Content-Security-Policy", "Strict-Transport-Security",
-                            "X-Content-Type-Options", "Referrer-Policy", "Permissions-Policy"]
-        passsecurityHeaders: list[dict[str, str | HeaderVals | None]] = [{"header": None, "status": None, "value": None} for x in range(len(securityHeaders))]
+    def checkSecHeaders(self, url) -> list[Findings]:
+        securityHeaders = ["Strict-Transport-Security", "Permissions-Policy",
+                            "X-Content-Type-Options", "Referrer-Policy"]
+        passsecurityHeaders: list[dict[str, str | HeaderVals | None]] = [{"header": None, "status": None, "value": None} for _ in range(len(securityHeaders))]
         getMsg = self.getMsg(url)
-        if (not isinstance(getMsg, str)):
-            response = None
-            try:
-                response, content = getMsg
-                for index, secHeader in enumerate(securityHeaders):
+        if isinstance(getMsg, str):
+            return [self._requestError("Security header check", url, getMsg)]
+
+        response, _ = getMsg
+        try:
+            for index, secHeader in enumerate(securityHeaders):
                     value = response.headers.get(secHeader)
                     passsecurityHeaders[index]["header"] = secHeader
                     match secHeader:
@@ -257,78 +268,133 @@ class HttpClient:
                         case ("Content-Security-Policy"):
                             pass
 
-            finally:
-                if (response is not None):
-                    response.close()
-                return passsecurityHeaders
+        finally:
+            response.close()
 
-        else:
-            return getMsg
+        severityByStatus = {
+            HeaderVals.PASS: "INFO",
+            HeaderVals.MISSING: "MEDIUM",
+            HeaderVals.WEAK: "LOW",
+            HeaderVals.MISCONFIGURED: "MEDIUM",
+            HeaderVals.INAPPLICABLE: "INFO",
+        }
+        findings = []
+        for headerResult in passsecurityHeaders:
+            status = headerResult["status"]
+            statusName = status.name if isinstance(status, HeaderVals) else "ERROR"
+            findings.append(
+                Findings(
+                    f"Security header: {headerResult['header']}",
+                    statusName,
+                    severityByStatus.get(status, "INFO")
+                    if isinstance(status, HeaderVals)
+                    else "INFO",
+                    f"{headerResult['header']} check status: {statusName.lower().replace('_', ' ')}.",
+                    {"header": headerResult["header"], "value": headerResult["value"]},
+                )
+            )
+        return findings
 
-    def checkCookies(self, url) -> list[Cookie] | str:
+    def checkCookies(self, url) -> list[Findings]:
         getMsg = self.getMsg(url)
-        response = None
-        cookieOverview = []
-        if (not isinstance(getMsg, str)):
-            try:
-                response, content = getMsg
-                cookies = response.cookies
+        if isinstance(getMsg, str):
+            return [self._requestError("Cookie check", url, getMsg)]
 
-                for cookie in cookies:
-                    cookieObj = Cookie(
-                                        cookie.name,
-                                        cookie.secure,
-                                        cookie.has_nonstandard_attr("HttpOnly"),
-                                        cookie.get_nonstandard_attr("SameSite"),
-                                        cookie.domain,
-                                        cookie.path,
-                                        cookie.expires,
-                                        cookie.get_nonstandard_attr("Max-Age"),
-                                        cookie.has_nonstandard_attr("Partitioned"),
-                                        cookie.get_nonstandard_attr("Priority")
-                                        )
-                    cookieOverview.append(cookieObj)
+        response, _ = getMsg
+        findings = []
+        try:
+            for cookie in response.cookies:
+                cookieObj = Cookie(
+                    cookie.name,
+                    cookie.secure,
+                    cookie.has_nonstandard_attr("HttpOnly"),
+                    cookie.get_nonstandard_attr("SameSite"),
+                    cookie.domain,
+                    cookie.path,
+                    cookie.expires,
+                    cookie.get_nonstandard_attr("Max-Age"),
+                    cookie.has_nonstandard_attr("Partitioned"),
+                    cookie.get_nonstandard_attr("Priority"),
+                )
+                findings.append(
+                    Findings(
+                        f"Cookie: {cookie.name}",
+                        "OBSERVED",
+                        "INFO",
+                        "Cookie attributes were collected; no pass/fail policy is applied.",
+                        cookieObj.cookieAttr,
+                    )
+                )
+        finally:
+            response.close()
+        return findings
 
-                return cookieOverview
-            
-            finally: 
-                if (response is not None):
-                    response.close()
-
-        else:
-            return getMsg
-
-    def checkFormSecurity(self, url):
+    def checkFormSecurity(self, url) -> list[Findings]:
         forms = self.findForms(url)
-        if (forms is not None):
-            forms, inputs = forms
-            formsSec = [{"Scheme": None, "Submission URL": None, "Method": None, "Password Exists": False, "External Submission": False} for x in range(len(forms))]
-            
-            for index, form in enumerate(forms):
-                action = form.get("action")
-                resolvedAction = urllib.parse.urljoin(url, action or url)
+        if forms is None:
+            return [self._requestError("Form security check", url)]
 
-                passwordFound = False
-                for inputTag in inputs[index]:
-                    if (inputTag.get("type", "").lower() == "password"):
-                            passwordFound = True
-                            break
+        forms, inputs = forms
+        findings = []
+        for index, (form, formInputs) in enumerate(zip(forms, inputs), start=1):
+            action = form.get("action")
+            resolvedAction = urllib.parse.urljoin(url, action or url)
+            passwordFound = any(
+                inputTag.get("type", "").lower() == "password"
+                for inputTag in formInputs
+            )
 
-                pageParsed = urllib.parse.urlparse(url)
-                actionParsed = urllib.parse.urlparse(resolvedAction)
-                pagePort = pageParsed.port or (443 if pageParsed.scheme == "https" else 80)
-                actionPort = actionParsed.port or (443 if actionParsed.scheme == "https" else 80)
-                pageOrigin = (pageParsed.scheme, pageParsed.hostname, pagePort)
-                actionOrigin = (actionParsed.scheme, actionParsed.hostname, actionPort)
-                isExternal = pageOrigin != actionOrigin
+            pageParsed = urllib.parse.urlparse(url)
+            actionParsed = urllib.parse.urlparse(resolvedAction)
+            pagePort = pageParsed.port or (443 if pageParsed.scheme == "https" else 80)
+            actionPort = actionParsed.port or (443 if actionParsed.scheme == "https" else 80)
+            pageOrigin = (pageParsed.scheme, pageParsed.hostname, pagePort)
+            actionOrigin = (actionParsed.scheme, actionParsed.hostname, actionPort)
+            isExternal = pageOrigin != actionOrigin
+            scheme = actionParsed.scheme.lower()
+            method = form.get("method", "get").lower()
 
-                formsSec[index]["Scheme"] = urllib.parse.urlparse(resolvedAction).scheme
-                formsSec[index]["Submission URL"] = resolvedAction
-                formsSec[index]["Method"] = form.get("method", "get").lower()
-                formsSec[index]["Password Exists"] = passwordFound
-                formsSec[index]["External Submission"] = isExternal
+            issues = []
+            if scheme != "https":
+                issues.append("The form does not submit over HTTPS.")
+            if passwordFound and method == "get":
+                issues.append("The password field is submitted using GET.")
+            if isExternal:
+                issues.append("The form submits to a different origin.")
 
-            return formsSec
+            hasInsecurePasswordSubmission = passwordFound and (
+                method == "get" or scheme != "https"
+            )
+            if hasInsecurePasswordSubmission:
+                status = "MISCONFIGURED"
+                severity = "HIGH"
+            elif scheme != "https":
+                status = "WEAK"
+                severity = "MEDIUM"
+            elif isExternal:
+                status = "WEAK"
+                severity = "LOW"
+            else:
+                status = "PASS"
+                severity = "INFO"
 
-        else: 
-            return None
+            description = " ".join(issues) if issues else (
+                "The form submits over HTTPS to the same origin and does not "
+                "submit a password using GET."
+            )
+            findings.append(
+                Findings(
+                    f"Form {index} security",
+                    status,
+                    severity,
+                    description,
+                    {
+                        "scheme": scheme,
+                        "submission_url": resolvedAction,
+                        "method": method,
+                        "password_exists": passwordFound,
+                        "external_submission": isExternal,
+                    },
+                )
+            )
+        return findings

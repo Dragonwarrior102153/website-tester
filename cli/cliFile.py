@@ -75,7 +75,10 @@ class CLI:
             print(result)
         else:
             response, content = result
-            print(content.decode(response.encoding or "utf-8", errors="replace"))
+            try:
+                print(content.decode(response.encoding or "utf-8", errors="replace"))
+            finally:
+                response.close()
 
     def statusMsg(self):
         result = HttpClient(self.url, 10, self.size).getMsg(self.url)
@@ -83,7 +86,10 @@ class CLI:
             print(result)
         else:
             response, _ = result
-            print(response.status_code)
+            try:
+                print(response.status_code)
+            finally:
+                response.close()
 
     def changeScope(self):
         url = input("which base url should be added to scope: \n")
@@ -109,13 +115,16 @@ class CLI:
         print(HttpClient(self.url, 10, self.size).findForms(self.url))
 
     def analyzeFormSec(self):
-        print(HttpClient(self.url, 10, self.size).checkFormSecurity(self.url))
+        findings = HttpClient(self.url, 10, self.size).checkFormSecurity(self.url)
+        print([finding.dictionary() for finding in findings])
 
     def findCookies(self):
-        print(HttpClient(self.url, 10, self.size).checkCookies(self.url))
+        findings = HttpClient(self.url, 10, self.size).checkCookies(self.url)
+        print([finding.dictionary() for finding in findings])
 
     def analyzeHeaders(self):
-        print(HttpClient(self.url, 10, self.size).checkSecHeaders(self.url))
+        findings = HttpClient(self.url, 10, self.size).checkSecHeaders(self.url)
+        print([finding.dictionary() for finding in findings])
 
     def exit(self):
         self.gameLoop = False
