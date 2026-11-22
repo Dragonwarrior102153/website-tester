@@ -9,6 +9,8 @@ from validateUrl import ValidateUrl
 from securityToolkitDb import SecToolDb
 
 import time
+import datetime
+import pandas as pd
 
 class WebsiteTesterGui:
     def __init__(self) -> None:
@@ -29,6 +31,9 @@ class WebsiteTesterGui:
             with col1:
                 targets = self.secToolDb.readAll()
                 st.metric("Registered Targets", len(targets))
+                
+                if (st.button("Show Targets")):
+                    self.showScope()
 
             with col2:
                 url = st.text_input("URL")
@@ -77,3 +82,13 @@ class WebsiteTesterGui:
 
                         st.write("Type:", assessmentType)
 
+    @st.dialog("Showing Targets")
+    def showScope(self):
+        targets = self.secToolDb.readAll()
+        convertedTargets = [
+        (url, datetime.datetime.fromtimestamp(float(timestamp)).strftime("%m/%d/%Y %I:%M %p"))
+        for id, url, timestamp in targets]
+        df = pd.DataFrame(convertedTargets, columns=["URL", "Time When Added"])
+        df.index.name = "Index"
+        st.dataframe(df)
+        
