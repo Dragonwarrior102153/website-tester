@@ -15,7 +15,7 @@ class SecToolDb():
         self.cursor.execute(query)
         self.conn.commit()
 
-        self.allowedColumns = []
+        self.allowedColumns = ["URL", "Time"]
 
     def create(self, url, time) -> None:
         query = f"INSERT INTO {self.table} (URL, Time) VALUES (?,?)"
@@ -36,14 +36,14 @@ class SecToolDb():
         query = f"UPDATE {self.table} SET  URL = ?, Time = ? WHERE (ID = ?)"
         self.cursor.execute(query, (url, time, id))
 
-    def update(self, id, column, value) -> None:
+    def update(self, URL, column, value) -> None:
         if (column in self.allowedColumns):
-            query = f"UPDATE {self.table} SET {column} = ? WHERE (ID = ?)"
-            self.cursor.execute(query, (value, id))
+            query = f"UPDATE {self.table} SET {column} = ? WHERE (URL = ?)"
+            self.cursor.execute(query, (value, URL))
 
-    def delete(self, id) -> None:
-        query = f"DELETE FROM {self.table} WHERE (ID = ?)"
-        self.cursor.execute(query, (id,))
+    def delete(self, URL) -> None:
+        query = f"DELETE FROM {self.table} WHERE (URL = ?)"
+        self.cursor.execute(query, (URL,))
         self.conn.commit()
 
     def deleteTable(self) -> None:

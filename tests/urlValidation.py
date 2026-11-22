@@ -10,10 +10,11 @@ import time
 
 def main():
     
-    http = HttpClient("", 10)
-    print(http.findAllPages(10))
+    print(ValidateUrl("http://localhost:8501").validateStructure())
     
+    SecToolDb("registeredTargets").delete("https://httpbin.org/")
+    print(SecToolDb("registeredTargets").readAll())
 
- 
+
 if (__name__ == "__main__"):
     main()

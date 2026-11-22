@@ -48,10 +48,11 @@ class HttpClient:
     def _requestError(checkName: str, url: str, error: str | None = None) -> Findings:
         description = f"{checkName} could not be completed."
         evidence = {"url": url}
-        if error is not None:
+        if (error is not None):
             description = f"{description} {error}"
             evidence["error"] = error
-        return Findings(checkName, "ERROR", "INFO", description, evidence)
+
+        return Findings(checkName, "ERROR", "NONE", description, evidence)
 
 
 
@@ -272,11 +273,11 @@ class HttpClient:
             response.close()
 
         severityByStatus = {
-            HeaderVals.PASS: "INFO",
+            HeaderVals.PASS: "NONE",
             HeaderVals.MISSING: "MEDIUM",
             HeaderVals.WEAK: "LOW",
             HeaderVals.MISCONFIGURED: "MEDIUM",
-            HeaderVals.INAPPLICABLE: "INFO",
+            HeaderVals.INAPPLICABLE: "NONE",
         }
         findings = []
         for headerResult in passsecurityHeaders:
@@ -286,9 +287,7 @@ class HttpClient:
                 Findings(
                     f"Security header: {headerResult['header']}",
                     statusName,
-                    severityByStatus.get(status, "INFO")
-                    if isinstance(status, HeaderVals)
-                    else "INFO",
+                    severityByStatus.get(status, "NONE") if isinstance(status, HeaderVals) else "NONE",
                     f"{headerResult['header']} check status: {statusName.lower().replace('_', ' ')}.",
                     {"header": headerResult["header"], "value": headerResult["value"]},
                 )
@@ -320,7 +319,7 @@ class HttpClient:
                     Findings(
                         f"Cookie: {cookie.name}",
                         "OBSERVED",
-                        "INFO",
+                        "NONE",
                         "Cookie attributes were collected; no pass/fail policy is applied.",
                         cookieObj.cookieAttr,
                     )
@@ -355,28 +354,28 @@ class HttpClient:
             method = form.get("method", "get").lower()
 
             issues = []
-            if scheme != "https":
+            if (scheme != "https"):
                 issues.append("The form does not submit over HTTPS.")
-            if passwordFound and method == "get":
+            if (passwordFound and method == "get"):
                 issues.append("The password field is submitted using GET.")
-            if isExternal:
+            if (isExternal):
                 issues.append("The form submits to a different origin.")
 
             hasInsecurePasswordSubmission = passwordFound and (
                 method == "get" or scheme != "https"
             )
-            if hasInsecurePasswordSubmission:
+            if (hasInsecurePasswordSubmission):
                 status = "MISCONFIGURED"
                 severity = "HIGH"
-            elif scheme != "https":
+            elif (scheme != "https"):
                 status = "WEAK"
                 severity = "MEDIUM"
-            elif isExternal:
+            elif (isExternal):
                 status = "WEAK"
                 severity = "LOW"
             else:
                 status = "PASS"
-                severity = "INFO"
+                severity = "NONE"
 
             description = " ".join(issues) if issues else (
                 "The form submits over HTTPS to the same origin and does not "
@@ -398,3 +397,5 @@ class HttpClient:
                 )
             )
         return findings
+
+    

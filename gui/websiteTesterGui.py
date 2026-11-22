@@ -7,6 +7,7 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 from httpClient import HttpClient
 from validateUrl import ValidateUrl
 from securityToolkitDb import SecToolDb
+from findings import Findings
 
 import time
 import datetime
@@ -38,24 +39,25 @@ class WebsiteTesterGui:
             with col2:
                 url = st.text_input("URL")
                 subCol1, subCol2 = st.columns([2,3])
+                outside = st.empty()
                 with subCol1:
                     if (st.button("Add URL to Scope")):
                         valid, err = ValidateUrl(url).validateUnkown()
                         if (valid):
                             self.secToolDb.create(url, time.time())
-                            st.success(f"Added '{url}' to scope")
+                            outside.success(f"Added '{url}' to scope")
                         else:
-                            st.error(f"'{url}' could not be validated. Failed {err}")
+                            outside.error(f"'{url}' could not be validated. Failed {err}")
                 with subCol2:
                     if (st.button("Delete URL From Scope")):
                         deleted = False
                         for id, target, _ in targets:
                             if (url == target):
                                 self.secToolDb.delete(url)
-                                st.success(f"Deleted '{url}'")
+                                outside.success(f"Deleted '{url}'")
                                 deleted = True
                         if (not deleted):
-                            st.error(f"]{url}' is not in scope")
+                            outside.error(f"]{url}' is not in scope")
                             
                     
         elif (page == "Assessment"):
@@ -64,25 +66,34 @@ class WebsiteTesterGui:
 
             url = st.text_input("Target URL")
 
-            assessmentType = st.selectbox(
-                "Assessment Type",
-                ["Full Assessment", "Headers", "Cookies", "Forms"]
-            )
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                assessmentType = st.selectbox(
+                    "Assessment Type",
+                    ["Full Assessment", "Headers", "Cookies", "Forms"]
+                )
+            
+            with col2:
+                size = st.text_input("Max Size per Page")
 
             if (st.button("Run Assessment")):
-
-                if (not url):
-                    st.error("Enter a URL first.")
+                valid, err = ValidateUrl(url).validateUnkown()
+                if (not valid):
+                    st.error(f"Invalid URL. \n{err}")
 
                 else:
                     with st.spinner("Assessing target..."):
+                        maxSize = size if size else "5 MB"
+                        self.client = HttpClient(url, 10, maxSize)
+                        self.headerCheck()
                         st.success(
                             f"Assessment requested for {url}"
                         )
 
                         st.write("Type:", assessmentType)
-
-    @st.dialog("Showing Targets")
+    
+    @st.dialog("Displaying Targets")
     def showScope(self):
         targets = self.secToolDb.readAll()
         convertedTargets = [
@@ -91,4 +102,17 @@ class WebsiteTesterGui:
         df = pd.DataFrame(convertedTargets, columns=["URL", "Time When Added"])
         df.index.name = "Index"
         st.dataframe(df)
+    
+    @st.dialog("Displaying Cookies")      
+    def scanCookies(self):
+        self.cookies = self.client.checkCookies(self.client.url)
+        self.findingsData = [finding.dictionary() for finding in self.cookies]
+        df = pd.DataFrame(self.findingsData)
+        st.dataframe(df, hide_index=True)
         
+    @st.dialog("Displaying Header Check Results")
+    def headerCheck(self):
+        self.headerCheckResult = self.client.checkSecHeaders(self.client.url)
+        self.findingsData = [finding.dictionary() for finding in self.headerCheckResult]
+        df = pd.DataFrame(self.findingsData)
+        st.dataframe(df, hide_index=True)

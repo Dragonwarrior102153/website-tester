@@ -13,7 +13,7 @@ class ValidateUrl():
         self.parsedUrl = urllib.parse.urlparse(self.url) #ts doesnt do validation
 
     def validateStructure(self) -> bool:
-        if (validators.url(self.url)):
+        if (validators.url(self.url) or self.parsedUrl.hostname == "localhost"):
             return True
         else:
             return False
@@ -76,6 +76,16 @@ class ValidateUrl():
     #(or all the functions it passed)
     def validate(self) -> tuple[bool, str]:
         validations = [self.checkScope, self.validateStructure, self.checkScheme, self.checkPort, self.checkConn]
+        for validation in validations:
+            if (not validation()):
+                return (False, validation.__name__)
+        
+        functions = ", ".join([func.__name__ for func in validations])
+        return (True, "passed " + functions)
+
+    #same as the previous method, but for validating unkown urls that havent been added to scope yet
+    def validateUnkown(self) -> tuple[bool, str]:
+        validations = [self.validateStructure, self.checkScheme, self.checkPort, self.checkConn]
         for validation in validations:
             if (not validation()):
                 return (False, validation.__name__)
