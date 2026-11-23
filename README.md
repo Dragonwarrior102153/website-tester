@@ -55,8 +55,9 @@ The local database is stored as `registeredTargets` by the GUI.
 ## Motivation
 I made this as a small Python tool to learn website validation and crawling. It checks URLs, fetches web pages, parses links, and explores a site in a limited way, with a local scope list to keep testing focused on approved websites. Additionally, I am interested in learning more about cybersecurity in the future, and I think this project is a useful way to explore relevant concepts while building a useful tool.
 
-<img width="309" height="93" alt="Screenshot 2026-11-08 190353" src="https://github.com/user-attachments/assets/fa6eddd4-641b-4adf-b739-9b26872ab5be" />
-<img width="599" height="355" alt="Screenshot 2026-11-08 190302" src="https://github.com/user-attachments/assets/a013b8cc-a026-4041-bcdd-849f819eaef5" />
-<img width="894" height="448" alt="Screenshot 2026-11-08 190136" src="https://github.com/user-attachments/assets/df8372ef-4363-4841-8d8f-0d4a0620c5c5" />
-<img width="459" height="436" alt="Screenshot 2026-11-08 190113" src="https://github.com/user-attachments/assets/009fc731-4172-4ec7-90c6-31e974755c2b" />
+<img width="961" height="517" alt="Screenshot 2026-11-22 210309" src="https://github.com/user-attachments/assets/f3a9a113-5984-49b7-8899-46b3fc6e1b07" />
+<img width="961" height="471" alt="Screenshot 2026-11-22 210249" src="https://github.com/user-attachments/assets/ce49ddca-919a-46f2-acf6-4caf57310e55" />
+<img width="834" height="264" alt="Screenshot 2026-11-22 210233" src="https://github.com/user-attachments/assets/34b463cb-704a-404c-b63a-a241bab2ecaf" />
+<img width="961" height="503" alt="Screenshot 2026-11-22 210228" src="https://github.com/user-attachments/assets/0c68e7df-a1e8-4c00-b56a-3206b38dad38" />
+<img width="961" height="571" alt="Screenshot 2026-11-22 202553" src="https://github.com/user-attachments/assets/a72acee1-fd92-4883-9351-e813e77bb239" />
 
