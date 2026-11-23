@@ -37,6 +37,36 @@ class HttpClientFindingsTests(unittest.TestCase):
     def setUp(self):
         self.client = HttpClient("https://example.test", 1)
 
+    def test_max_pages_defaults_to_ten(self):
+        self.assertEqual(self.client.maxPages, 10)
+
+    def test_max_pages_uses_custom_limit(self):
+        client = HttpClient("https://example.test", 1, "2 MB", 3)
+        visited = []
+
+        def find_page_links(url):
+            visited.append(url)
+            if url == "https://example.test":
+                return {
+                    "https://example.test/page-1",
+                    "https://example.test/page-2",
+                }
+            return set()
+
+        with patch.object(client, "findPagesFromPage", side_effect=find_page_links):
+            pages = client.findAllPages()
+
+        self.assertEqual(client.maxPages, 3)
+        self.assertEqual(len(visited), 3)
+        self.assertEqual(
+            pages,
+            {
+                "https://example.test",
+                "https://example.test/page-1",
+                "https://example.test/page-2",
+            },
+        )
+
     def assert_findings(self, findings):
         self.assertIsInstance(findings, list)
         self.assertTrue(all(isinstance(finding, Findings) for finding in findings))
@@ -47,9 +77,38 @@ class HttpClientFindingsTests(unittest.TestCase):
             findings = self.client.checkSecHeaders("https://example.test")
 
         self.assert_findings(findings)
-        self.assertEqual(len(findings), 4)
+        self.assertEqual(len(findings), 5)
         self.assertEqual(findings[0].status, "MISSING")
         self.assertTrue(response.closed)
+
+    def test_content_security_policy_passes_restricted_policy(self):
+        response = FakeResponse({
+            "Content-Security-Policy": "default-src 'self'; object-src 'none'; frame-ancestors 'none'",
+        })
+        with patch.object(self.client, "getMsg", return_value=(response, b"")):
+            findings = self.client.checkSecHeaders("https://example.test")
+
+        cspFinding = next(finding for finding in findings if finding.name.endswith("Content-Security-Policy"))
+        self.assertEqual(cspFinding.status, "PASS")
+        self.assertTrue(response.closed)
+
+    def test_content_security_policy_marks_unsafe_sources_weak(self):
+        response = FakeResponse({
+            "Content-Security-Policy": "default-src 'self'; script-src 'unsafe-inline' 'unsafe-eval'",
+        })
+        with patch.object(self.client, "getMsg", return_value=(response, b"")):
+            findings = self.client.checkSecHeaders("https://example.test")
+
+        cspFinding = next(finding for finding in findings if finding.name.endswith("Content-Security-Policy"))
+        self.assertEqual(cspFinding.status, "WEAK")
+
+    def test_content_security_policy_marks_missing_sources_misconfigured(self):
+        response = FakeResponse({"Content-Security-Policy": "default-src"})
+        with patch.object(self.client, "getMsg", return_value=(response, b"")):
+            findings = self.client.checkSecHeaders("https://example.test")
+
+        cspFinding = next(finding for finding in findings if finding.name.endswith("Content-Security-Policy"))
+        self.assertEqual(cspFinding.status, "MISCONFIGURED")
 
     def test_cookies_return_findings_and_close_response(self):
         response = FakeResponse(cookies=[FakeCookie()])

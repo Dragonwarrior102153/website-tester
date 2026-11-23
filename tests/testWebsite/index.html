@@ -1,16 +1,114 @@
 <!--This is a blank website with some links to other pages
- so i can test the crawler and its functionality-->
+and stuff so i can test the functionality of my functions-->
 
+<
 <!doctype html>
-<html>
+<html lang="en">
   <head>
-    <title>Test Website - Home</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Security Toolkit Test Site</title>
   </head>
-  <body>
-    <h1>Welcome to the Test Website</h1>
 
-    <a href="about.html">About</a>
-    <a href="contact.html">Contact</a>
-    <a href="about.html">About Again</a>
+  <body>
+    <h1>Security Toolkit Test Website</h1>
+    <p>Use this page to test your form security checks.</p>
+
+    <hr />
+
+    <!-- 1. Basic GET form -->
+    <h2>1. Basic GET Form</h2>
+    <form action="/search" method="GET">
+      <label for="search">Search:</label>
+      <input type="text" id="search" name="search" />
+      <button type="submit">Search</button>
+    </form>
+
+    <hr />
+
+    <!-- 2. HTTPS POST form -->
+    <h2>2. POST Form</h2>
+    <form action="https://example.com/submit" method="POST">
+      <label for="username">Username:</label>
+      <input type="text" id="username" name="username" />
+
+      <label for="password">Password:</label>
+      <input type="password" id="password" name="password" />
+
+      <button type="submit">Submit</button>
+    </form>
+
+    <hr />
+
+    <!-- 3. Form with no action -->
+    <h2>3. Missing Action</h2>
+    <form method="POST">
+      <label for="email">Email:</label>
+      <input type="email" id="email" name="email" />
+      <button type="submit">Submit</button>
+    </form>
+
+    <hr />
+
+    <!-- 4. Form with no method -->
+    <h2>4. Missing Method</h2>
+    <form action="/contact">
+      <label for="message">Message:</label>
+      <textarea id="message" name="message"></textarea>
+      <button type="submit">Send</button>
+    </form>
+
+    <hr />
+
+    <!-- 5. HTTP form action -->
+    <h2>5. Insecure HTTP Action</h2>
+    <form action="http://example.com/submit" method="POST">
+      <label for="name">Name:</label>
+      <input type="text" id="name" name="name" />
+      <button type="submit">Submit</button>
+    </form>
+
+    <hr />
+
+    <!-- 6. Form with password but GET method -->
+    <h2>6. Password With GET</h2>
+    <form action="/login" method="GET">
+      <label for="loginPassword">Password:</label>
+      <input type="password" id="loginPassword" name="password" />
+      <button type="submit">Login</button>
+    </form>
+
+    <hr />
+
+    <!-- 7. External form action -->
+    <h2>7. External Action</h2>
+    <form action="https://example.org/collect" method="POST">
+      <label for="feedback">Feedback:</label>
+      <textarea id="feedback" name="feedback"></textarea>
+      <button type="submit">Send Feedback</button>
+    </form>
+
+    <hr />
+
+    <!-- 8. Form with hidden CSRF-like token -->
+    <h2>8. Hidden Token Indicator</h2>
+    <form action="/account/update" method="POST">
+      <input type="hidden" name="csrf_token" value="sample-test-token" />
+
+      <label for="displayName">Display Name:</label>
+      <input type="text" id="displayName" name="displayName" />
+
+      <button type="submit">Update</button>
+    </form>
+
+    <hr />
+
+    <!-- 9. Form with no explicit method or action -->
+    <h2>9. Default Form Behavior</h2>
+    <form>
+      <label for="defaultInput">Input:</label>
+      <input type="text" id="defaultInput" name="input" />
+      <button type="submit">Submit</button>
+    </form>
   </body>
 </html>

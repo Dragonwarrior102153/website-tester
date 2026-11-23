@@ -2,48 +2,36 @@
 
 ## What it is
 
-Website Tester is a command-line tool for checking and exploring websites you
-own or have permission to test. Enter a URL to check its format and connection
-or resolve its IPv4 address. You can fetch a page's HTML or status code, list
-its links, or crawl links across a limited number of pages. The tool can also
-show forms and their input fields, check basic form security, review selected
-security headers, and summarize cookies.
+Website Tester is a web-based GUI for checking and exploring websites you own
+or have permission to test. Add approved base URLs to the local scope list,
+then run targeted or full assessments for security headers, cookies, and forms.
+Results are presented in tables and charts, with an optional PDF report
+download.
 
-Save base URLs in the local scope list to keep track of sites you are allowed to
-test. The `Validate` action requires the exact URL to be in the list before
-checking it. Other actions are not restricted by the list, so use them only on
-sites you have permission to assess.
+The assessment tools are intended for authorized use only. The scope list helps
+you keep track of approved targets, but you remain responsible for confirming
+permission before every assessment.
 
-## Run the packaged Windows executable
+## Features
 
-If you are using the packaged `WebsiteTester.exe`, you do not need to install
-Python or the project libraries separately.
+- Validate website URLs and registered targets
+- Review security headers and cookie configuration
+- Inspect forms and basic form-security indicators
+- Run full assessments across headers, cookies, and forms
+- View severity summaries in tables and charts
+- Download findings as a PDF assessment report
+- Keep an approved-target scope in a local SQLite database
 
-1. Open the folder containing `WebsiteTester.exe`
-2. Double-click `WebsiteTester.exe`, or open a terminal in that folder and run:
+## Run the application
 
-   ```powershell
-   .\WebsiteTester.exe
-   ```
-
-3. Use the command-line menu as described below. The local scope database is
-   created in the current working directory.
-
-## Run from source: requirements
-
-Use these requirements only if you want to run the Python source code instead
-of the packaged executable:
+### Requirements
 
 - Python 3.10 or newer
-- The Python packages listed in [`requirements.txt`](requirements.txt):
-  - `beautifulsoup4`
-  - `requests`
-  - `validators`
+- Packages listed in [`requirements.txt`](requirements.txt)
 
-The other modules used by the program, including SQLite support, come with
-Python.
+The project also uses SQLite support provided by Python.
 
-## Run from source
+### Start from source
 
 1. Open a terminal in the project folder.
 2. Install the required packages:
@@ -52,23 +40,17 @@ Python.
    python -m pip install -r requirements.txt
    ```
 
-3. Start the command-line menu:
+3. Start the Streamlit interface:
 
    ```bash
-   python cli/main.py
+   streamlit run gui/main.py
    ```
 
-4. Type an action at the prompt. For `Validate`, first choose `Scope` and add
-   the exact URL you want to validate (for example, `https://example.com`).
-5. Follow the prompts for the chosen action. When asked for a maximum response
-   size, enter a number and unit such as `2 MB`; for `Paths`, also enter the
-   maximum number of pages to visit.
-6. Choose `Exit` when you're done.
+4. Open the local URL shown in the terminal.
+5. Use **Dashboard** to manage registered targets or **Assessment** to scan a
+   target and download an assessment report.
 
-The local scope database is created in the current working directory as
-`SecurityToolkitDb`.
-
-Only test websites you own or have explicit permission to assess.
+The local database is stored as `registeredTargets` by the GUI.
 
 ## Motivation
 I made this as a small Python tool to learn website validation and crawling. It checks URLs, fetches web pages, parses links, and explores a site in a limited way, with a local scope list to keep testing focused on approved websites. Additionally, I am interested in learning more about cybersecurity in the future, and I think this project is a useful way to explore relevant concepts while building a useful tool.

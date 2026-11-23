@@ -8,10 +8,11 @@ from cookie import Cookie
 from findings import Findings
 
 class HttpClient:
-    def __init__(self, url, timeout, maxSize: str = "2 MB") -> None:
+    def __init__(self, url, timeout, maxSize: str = "2 MB", maxPages: int = 10) -> None:
         self.url = url
         self.timeout = timeout
         self.maxSize = self.parsSize(maxSize)
+        self.maxPages = maxPages if maxPages > 0 else 10
 
     @staticmethod
     def parsSize(size: str) -> int:
@@ -79,7 +80,11 @@ class HttpClient:
         else:
             return set()
 
-    def findAllPages(self, maxPages) -> set:
+    def findAllPages(self, maxPages: int | None = None) -> set:
+        if maxPages is None:
+            maxPages = self.maxPages
+        if maxPages <= 0:
+            maxPages = 10
         allPages = set()
         visited = set()
         toVisit = {self.url}
@@ -131,7 +136,8 @@ class HttpClient:
     #holy grail of if else statements and indents😭
     def checkSecHeaders(self, url) -> list[Findings]:
         securityHeaders = ["Strict-Transport-Security", "Permissions-Policy",
-                            "X-Content-Type-Options", "Referrer-Policy"]
+                            "X-Content-Type-Options", "Referrer-Policy",
+                            "Content-Security-Policy"]
         passsecurityHeaders: list[dict[str, str | HeaderVals | None]] = [{"header": None, "status": None, "value": None} for _ in range(len(securityHeaders))]
         getMsg = self.getMsg(url)
         if isinstance(getMsg, str):
@@ -267,7 +273,63 @@ class HttpClient:
                                 passsecurityHeaders[index]["value"] = None
 
                         case ("Content-Security-Policy"):
-                            pass
+                            if (value is None):
+                                passsecurityHeaders[index]["status"] = HeaderVals.MISSING
+                                passsecurityHeaders[index]["value"] = None
+
+                            elif (not value.strip()):
+                                passsecurityHeaders[index]["status"] = HeaderVals.MISCONFIGURED
+                                passsecurityHeaders[index]["value"] = value
+
+                            else:
+                                directives = {}
+                                malformed = False
+
+                                for rawDirective in value.split(";"):
+                                    parts = rawDirective.strip().split()
+                                    if (not parts):
+                                        continue
+
+                                    name = parts[0].lower()
+                                    if (name in directives):
+                                        malformed = True
+                                        break
+                                    directives[name] = [source.lower() for source in parts[1:]]
+                                    if (name == "default-src" or name == "script-src"):
+                                        if (not parts[1:]):
+                                            malformed = True
+                                            break
+
+                                if (malformed or not directives):
+                                    passsecurityHeaders[index]["status"] = HeaderVals.MISCONFIGURED
+                                    passsecurityHeaders[index]["value"] = value
+                                    continue
+
+                                sources = []
+                                for directiveSources in directives.values():
+                                    sources.extend(directiveSources)
+
+                                unsafeSources = {"*", "'unsafe-inline'", "'unsafe-eval'"}
+                                weak = any(
+                                    source in unsafeSources
+                                    or source.startswith("*.")
+                                    or source.startswith("data:")
+                                    or source.startswith("http:")
+                                    for source in sources
+                                )
+
+                                fallbackSources = directives.get("default-src")
+                                scriptSources = directives.get("script-src")
+                                protected = fallbackSources is not None or scriptSources is not None
+
+                                if (weak):
+                                    passsecurityHeaders[index]["status"] = HeaderVals.WEAK
+                                elif (protected):
+                                    passsecurityHeaders[index]["status"] = HeaderVals.PASS
+                                else:
+                                    passsecurityHeaders[index]["status"] = HeaderVals.WEAK
+
+                                passsecurityHeaders[index]["value"] = value
 
         finally:
             response.close()
@@ -279,7 +341,7 @@ class HttpClient:
             HeaderVals.MISCONFIGURED: "MEDIUM",
             HeaderVals.INAPPLICABLE: "NONE",
         }
-        findings = []
+        findings = []   
         for headerResult in passsecurityHeaders:
             status = headerResult["status"]
             statusName = status.name if isinstance(status, HeaderVals) else "ERROR"
